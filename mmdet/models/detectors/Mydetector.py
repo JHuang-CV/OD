@@ -44,6 +44,15 @@ class CIRDetector(BaseDetector):
             x = self.neck(x)
         return x
 
+    def forward_dummy(self, img):
+        """Used for computing network flops.
+
+        See `mmedetection/tools/get_flops.py`
+        """
+        x = self.extract_feat(img)
+        outs = self.bbox_head(x)
+        return outs
+
     def forward_train(self,
                       img,
                       img_metas,
@@ -56,3 +65,17 @@ class CIRDetector(BaseDetector):
         losses = self.bbox_head.loss(
             *loss_inputs, gt_bboxes_ignore=gt_bboxes_ignore)
         return losses
+
+    def simple_test(self, img, img_meta, rescale=False):
+        x = self.extract_feat(img)
+        outs = self.bbox_head(x)
+        bbox_inputs = outs[0:2] + (img_meta, self.test_cfg, rescale)
+        bbox_list = self.bbox_head.get_bboxes(*bbox_inputs)
+        bbox_results = [
+            bbox2result(det_bboxes, det_labels, self.bbox_head.num_classes)
+            for det_bboxes, det_labels in bbox_list
+        ]
+        return bbox_results[0]
+
+    def aug_test(self, imgs, img_metas, rescale=False):
+        raise NotImplementedError

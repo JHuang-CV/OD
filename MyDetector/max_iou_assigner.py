@@ -150,22 +150,22 @@ class MaxIoUAssigner(BaseAssigner):
 
         soft_gt_labels = assigned_gt_inds.new_zeros((num_bboxes, 2), dtype=torch.float)
         if isinstance(self.neg_iou_thr, float):
-            unassigned_bboxes_inds = torch.nonezero((assigned_gt_inds == -1) &
+            unassigned_bboxes_inds = torch.nonzero((assigned_gt_inds == -1) &
                                                     (max_overlaps > self.neg_iou_thr)).squeeze()
             unassigned_gt_inds = argmax_overlaps[unassigned_bboxes_inds]
             unassigned_gt_labels = gt_labels[unassigned_gt_inds]
             unassigned_bboxes_maxoverlaps = overlaps[unassigned_gt_inds, unassigned_bboxes_inds]
-            soft_gt_labels[unassigned_bboxes_inds, 0] = unassigned_gt_labels
+            soft_gt_labels[unassigned_bboxes_inds, 0] = unassigned_gt_labels.float()
             soft_gt_labels[unassigned_bboxes_inds, 1] = (unassigned_bboxes_maxoverlaps-self.neg_iou_thr) / \
                                                         (self.pos_iou_thr-self.neg_iou_thr)
         elif isinstance(self.neg_iou_thr, tuple):
             assert len(self.neg_iou_thr) == 2
-            unassigned_bboxes_inds = torch.nonezero((assigned_gt_inds == -1) &
+            unassigned_bboxes_inds = torch.nonzero((assigned_gt_inds == -1) &
                                                     (max_overlaps > self.neg_iou_thr[1])).squeeze()
             unassigned_gt_inds = argmax_overlaps[unassigned_bboxes_inds]
             unassigned_gt_labels = gt_labels[unassigned_gt_inds]
             unassigned_bboxes_maxoverlaps = overlaps[unassigned_gt_inds, unassigned_bboxes_inds]
-            soft_gt_labels[unassigned_bboxes_inds, 0] = unassigned_gt_labels
+            soft_gt_labels[unassigned_bboxes_inds, 0] = unassigned_gt_labels.float()
             soft_gt_labels[unassigned_bboxes_inds, 1] = (unassigned_bboxes_maxoverlaps-self.neg_iou_thr[1]) / \
                                                         (self.pos_iou_thr-self.neg_iou_thr[1])
 

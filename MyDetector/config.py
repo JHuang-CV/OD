@@ -34,14 +34,14 @@ model = dict(
             gamma=2.0,
             alpha=0.25,
             loss_weight=1.0),
-        loss_bbox=dict(type='SmoothL1Loss', beta=0.11, loss_weight=1.0),
+        loss_bbox=dict(type='SmoothL1Loss', beta=0.11, loss_weight=1.5),
         loss_IoUness=dict(
             type='CrossEntropyLoss',
             use_sigmoid=True,
             loss_weight=1.0),
         loss_softcls=dict(
             type='MSELoss',
-            loss_weight=1.0)))
+            loss_weight=5.0)))
 
 # training and testing settings
 train_cfg = dict(
@@ -132,7 +132,7 @@ total_epochs = 12
 device_ids = range(8)
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-work_dir = './work_dirs/MyDetector'
+work_dir = './work_dirs/MyDetector/clsloss_weight_regloss1.5'
 load_from = None
 resume_from = None
 workflow = [('train', 1)]
