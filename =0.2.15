@@ -1,0 +1,16 @@
+Looking in indexes: https://pypi.tuna.tsinghua.edu.cn/simple
+Collecting mmcv
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/9b/7c/f6c20b54bb22d47cb87cc48ee626aab290584458e38bc1bbb76c868afc82/mmcv-0.2.15.tar.gz (49kB)
+Requirement already satisfied: numpy>=1.11.1 in /home/hj/miniconda3/envs/open-mmlab/lib/python3.7/site-packages (from mmcv) (1.17.2)
+Requirement already satisfied: pyyaml in /home/hj/miniconda3/envs/open-mmlab/lib/python3.7/site-packages/PyYAML-5.1.2-py3.7-linux-x86_64.egg (from mmcv) (5.1.2)
+Requirement already satisfied: six in /home/hj/miniconda3/envs/open-mmlab/lib/python3.7/site-packages (from mmcv) (1.12.0)
+Requirement already satisfied: addict in /home/hj/miniconda3/envs/open-mmlab/lib/python3.7/site-packages (from mmcv) (2.2.1)
+Requirement already satisfied: requests in /home/hj/miniconda3/envs/open-mmlab/lib/python3.7/site-packages (from mmcv) (2.22.0)
+Requirement already satisfied: opencv-python-headless>=3 in /home/hj/miniconda3/envs/open-mmlab/lib/python3.7/site-packages/opencv_python_headless-4.1.1.26-py3.7-linux-x86_64.egg (from mmcv) (4.1.1.26)
+Requirement already satisfied: urllib3!=1.25.0,!=1.25.1,<1.26,>=1.21.1 in /home/hj/miniconda3/envs/open-mmlab/lib/python3.7/site-packages (from requests->mmcv) (1.25.6)
+Requirement already satisfied: idna<2.9,>=2.5 in /home/hj/miniconda3/envs/open-mmlab/lib/python3.7/site-packages (from requests->mmcv) (2.8)
+Requirement already satisfied: chardet<3.1.0,>=3.0.2 in /home/hj/miniconda3/envs/open-mmlab/lib/python3.7/site-packages (from requests->mmcv) (3.0.4)
+Requirement already satisfied: certifi>=2017.4.17 in /home/hj/miniconda3/envs/open-mmlab/lib/python3.7/site-packages (from requests->mmcv) (2019.9.11)
+Building wheels for collected packages: mmcv
+  Building wheel for mmcv (setup.py): started
+  Building wheel for mmcv (setup.py): finished with status 'canceled'
