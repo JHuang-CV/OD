@@ -8,6 +8,8 @@ from ..registry import NECKS
 from ..utils import ConvModule
 from mmdet.ops.context_block import ContextBlock
 
+from mmdet.models.plugins.squeeze_excitation import ChannelSELayer
+
 
 @NECKS.register_module
 class CatFPN(nn.Module):
@@ -36,6 +38,8 @@ class CatFPN(nn.Module):
         self.no_norm_on_lateral = no_norm_on_lateral
         self.norm_cfg = norm_cfg
         self.fp16_enabled = False
+
+        self.se = ChannelSELayer(768)
 
         if end_level == -1:
             self.backbone_end_level = self.num_ins
@@ -137,11 +141,13 @@ class CatFPN(nn.Module):
                 level.append(F.max_pool2d(level[-1], 2, stride=2))
             mulscale_per_level.append(level)
         sglscale_per_level = list(zip(*mulscale_per_level))
-        features_cat = [torch.cat(scale, 1)for scale in sglscale_per_level]
-        outs = [cat_conv(features_cat[i]) for i, cat_conv in enumerate(self.cat_convs)]
-        outs = [outs[i]+lateral for i, lateral in enumerate(laterals)]
-        #outs = [add_conv(outs[i]) for i, add_conv in enumerate(self.add_convs)]
+        feat_cat = [torch.cat(scale, 1)for scale in sglscale_per_level]
+        #channel_se = [self.se(cat_ft) for cat_ft in feat_cat]
+        outs = [cat_conv(feat_cat[i]) for i, cat_conv in enumerate(self.cat_convs)]
         outs = [self.gc_block(ft) for ft in outs]
+        outs = [outs[i]+lateral for i, lateral in enumerate(laterals)]
+        outs = [add_conv(outs[i]) for i, add_conv in enumerate(self.add_convs)]
+        #outs = [self.gc_block(ft) for ft in outs]
 
         if self.num_outs > used_backbone_levels:
             if not self.add_extra_convs:

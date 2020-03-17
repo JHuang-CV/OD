@@ -1,7 +1,7 @@
 # model settings
 model = dict(
     type='RetinaNet',
-    pretrained='torchvision://resnet50',
+    pretrained='torchvision://resnet101',
     backbone=dict(
         type='ResNet',
         depth=50,
@@ -124,7 +124,7 @@ log_config = dict(
 total_epochs = 12
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-work_dir = './work_dirs/retinanet_r50_catfpn_non_local_1x'
+work_dir = './work_dirs/retinanet_r101_catfpn_non_local_bfadd_1x'
 load_from = None
 resume_from = None
 workflow = [('train', 1)]
