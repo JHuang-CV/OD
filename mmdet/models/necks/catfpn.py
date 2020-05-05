@@ -58,6 +58,7 @@ class CatFPN(nn.Module):
         self.fpn_convs = nn.ModuleList()
         self.cat_convs = nn.ModuleList()
         self.add_convs = nn.ModuleList()
+        #self.gc_block = nn.ModuleList()
         self.gc_block = ContextBlock(inplanes=256, ratio=1./4.)
 
         for i in range(self.start_level, self.backbone_end_level):
@@ -90,7 +91,7 @@ class CatFPN(nn.Module):
             self.cat_convs.append(cat_conv)
             self.lateral_convs.append(l_conv)
             self.add_convs.append(add_conv)
-
+            #self.gc_block.append(ContextBlock(inplanes=256, ratio=1./4.))
         # add extra conv layers (e.g., RetinaNet)
         extra_levels = num_outs - self.backbone_end_level + self.start_level
         if add_extra_convs and extra_levels >= 1:
@@ -144,6 +145,7 @@ class CatFPN(nn.Module):
         feat_cat = [torch.cat(scale, 1)for scale in sglscale_per_level]
         #channel_se = [self.se(cat_ft) for cat_ft in feat_cat]
         outs = [cat_conv(feat_cat[i]) for i, cat_conv in enumerate(self.cat_convs)]
+        #outs = [gc(outs[i]) for i, gc in enumerate(self.gc_block)]
         outs = [self.gc_block(ft) for ft in outs]
         outs = [outs[i]+lateral for i, lateral in enumerate(laterals)]
         outs = [add_conv(outs[i]) for i, add_conv in enumerate(self.add_convs)]
@@ -152,16 +154,16 @@ class CatFPN(nn.Module):
         if self.num_outs > used_backbone_levels:
             if not self.add_extra_convs:
                 for i in range(self.num_outs - used_backbone_levels):
-                    outs.append(self.gc_block(F.max_pool2d(outs[-1], 1, stride=2)))
+                    outs.append(F.max_pool2d(outs[-1], 1, stride=2))
             else:
                 if self.extra_convs_on_inputs:
                     orig = inputs[self.backbone_end_level - 1]
-                    outs.append(self.gc_block(self.fpn_convs[0](orig)))
+                    outs.append(self.fpn_convs[0](orig))
                 else:
-                    outs.append(self.gc_block(self.fpn_convs[0](outs[-1])))
+                    outs.append(self.fpn_convs[0](outs[-1]))
                 for i in range(1, self.num_outs-used_backbone_levels):
                     if self.relu_before_extra_convs:
-                        outs.append(self.gc_block(self.fpn_convs[i](F.relu(outs[-1]))))
+                        outs.append(self.fpn_convs[i](F.relu(outs[-1])))
                     else:
-                        outs.append(self.gc_block(self.fpn_convs[i](outs[-1])))
+                        outs.append(self.fpn_convs[i](outs[-1]))
         return tuple(outs)

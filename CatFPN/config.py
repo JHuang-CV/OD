@@ -4,11 +4,13 @@ model = dict(
     pretrained='torchvision://resnet101',
     backbone=dict(
         type='ResNet',
-        depth=50,
+        depth=101,
         num_stages=4,
         out_indices=(0, 1, 2, 3),
         frozen_stages=1,
-        style='pytorch'),
+        style='pytorch',
+        dcn=dict(type='DCN', deformable_groups=1, fallback_on_stride=False),
+        stage_with_dcn=(False, True, True, True)),
     neck=dict(
         type='CatFPN',
         in_channels=[256, 512, 1024, 2048],
@@ -61,7 +63,8 @@ img_norm_cfg = dict(
 train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations', with_bbox=True),
-    dict(type='Resize', img_scale=(1333, 800), keep_ratio=True),
+    dict(type='Resize', img_scale=[(1066, 640), (1200, 720), (1333, 800)],
+         multiscale_mode='value', keep_ratio=True),
     dict(type='RandomFlip', flip_ratio=0.5),
     dict(type='Normalize', **img_norm_cfg),
     dict(type='Pad', size_divisor=32),
@@ -110,7 +113,7 @@ lr_config = dict(
     warmup='linear',
     warmup_iters=500,
     warmup_ratio=1.0 / 3,
-    step=[8, 11])
+    step=[16, 22])
 checkpoint_config = dict(interval=1)
 # yapf:disable
 log_config = dict(
@@ -121,10 +124,10 @@ log_config = dict(
     ])
 # yapf:enable
 # runtime settings
-total_epochs = 12
+total_epochs = 24
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-work_dir = './work_dirs/retinanet_r101_catfpn_non_local_bfadd_1x'
+work_dir = './work_dirs/retinanet_r101_dcn_catfpn_gc_gn_multi_scale_2x'
 load_from = None
 resume_from = None
 workflow = [('train', 1)]
