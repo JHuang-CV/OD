@@ -12,7 +12,7 @@ from mmdet.models.plugins.squeeze_excitation import ChannelSELayer
 
 
 @NECKS.register_module
-class CatFPN(nn.Module):
+class SingleCatFPN(nn.Module):
 
     def __init__(self,
                  in_channels,
@@ -27,7 +27,7 @@ class CatFPN(nn.Module):
                  conv_cfg=None,
                  norm_cfg=None,
                  activation=None):
-        super(CatFPN, self).__init__()
+        super(SingleCatFPN, self).__init__()
         assert isinstance(in_channels, list)
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -130,29 +130,52 @@ class CatFPN(nn.Module):
 
         used_backbone_levels = len(laterals)
 
-        mulscale_per_level = []
-        for i in range(used_backbone_levels):
-            level = []
-            m = i - 0
-            n = used_backbone_levels - 1 - i
-            level.append(laterals[i])
-            for x in range(m):
-                level.insert(0, F.interpolate(level[0], scale_factor=2, mode='nearest'))
-            for y in range(n):
-                level.append(F.max_pool2d(level[-1], 2, stride=2))
-            mulscale_per_level.append(level)
-        sglscale_per_level = list(zip(*mulscale_per_level))
-
-        feat_add = [sum(scale) for scale in sglscale_per_level]
+        # mulscale_per_level = []
+        # for i in range(used_backbone_levels):
+        #     level = []
+        #     m = i - 0
+        #     n = used_backbone_levels - 1 - i
+        #     level.append(laterals[i])
+        #     for x in range(m):
+        #         level.insert(0, F.interpolate(level[0], scale_factor=2, mode='nearest'))
+        #     for y in range(n):
+        #         level.append(F.max_pool2d(level[-1], 2, stride=2))
+        #     mulscale_per_level.append(level)
+        # sglscale_per_level = list(zip(*mulscale_per_level))
         # feat_cat = [torch.cat(scale, 1)for scale in sglscale_per_level]
-        #channel_se = [self.se(cat_ft) for cat_ft in feat_cat]
+        # #channel_se = [self.se(cat_ft) for cat_ft in feat_cat]
         # outs = [cat_conv(feat_cat[i]) for i, cat_conv in enumerate(self.cat_convs)]
-        #outs = [gc(outs[i]) for i, gc in enumerate(self.gc_block)]
+        # #outs = [gc(outs[i]) for i, gc in enumerate(self.gc_block)]
         # outs = [self.gc_block(ft) for ft in outs]
-        outs = [self.gc_block(ft) for ft in feat_add]
-        outs = [outs[i]+lateral for i, lateral in enumerate(laterals)]
+        # outs = [outs[i]+lateral for i, lateral in enumerate(laterals)]
+        # outs = [add_conv(outs[i]) for i, add_conv in enumerate(self.add_convs)]
+        # #outs = [self.gc_block(ft) for ft in outs]
+
+        single_list = []
+        level = used_backbone_levels // 2
+
+        for i in range(used_backbone_levels):
+            if i < level:
+                single_list.append(F.max_pool2d(laterals[i], 2, stride=2))
+            elif i == level:
+                single_list.append(laterals[i])
+            else:
+                single_list.append(F.interpolate(laterals[i], scale_factor=2, mode='nearest'))
+
+        single_cat = torch.cat(single_list, 1)
+        single_cat = self.cat_convs[0](single_cat)
+        single_cat = self.gc_block(single_cat)
+
+        m = level - 0
+        n = used_backbone_levels - 1 - level
+        outs = [single_cat]
+        for x in range(m):
+            outs.insert(0, F.interpolate(outs[0], scale_factor=2, mode='nearest'))
+        for y in range(n):
+            outs.append(F.max_pool2d(outs[-1], 2, stride=2))
+
+        outs = [outs[i]/2 + lateral/2 for i, lateral in enumerate(laterals)]
         outs = [add_conv(outs[i]) for i, add_conv in enumerate(self.add_convs)]
-        #outs = [self.gc_block(ft) for ft in outs]
 
         if self.num_outs > used_backbone_levels:
             if not self.add_extra_convs:

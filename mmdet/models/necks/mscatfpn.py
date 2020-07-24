@@ -12,7 +12,7 @@ from mmdet.models.plugins.squeeze_excitation import ChannelSELayer
 
 
 @NECKS.register_module
-class CatFPN(nn.Module):
+class MSCATFPN(nn.Module):
 
     def __init__(self,
                  in_channels,
@@ -27,7 +27,7 @@ class CatFPN(nn.Module):
                  conv_cfg=None,
                  norm_cfg=None,
                  activation=None):
-        super(CatFPN, self).__init__()
+        super(MSCATFPN, self).__init__()
         assert isinstance(in_channels, list)
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -38,6 +38,8 @@ class CatFPN(nn.Module):
         self.no_norm_on_lateral = no_norm_on_lateral
         self.norm_cfg = norm_cfg
         self.fp16_enabled = False
+
+        self.epsilon = 1e-4
 
         self.se = ChannelSELayer(768)
 
@@ -59,7 +61,25 @@ class CatFPN(nn.Module):
         self.cat_convs = nn.ModuleList()
         self.add_convs = nn.ModuleList()
         #self.gc_block = nn.ModuleList()
-        self.gc_block = ContextBlock(inplanes=256, ratio=1./4.)
+
+        self.relu = nn.ReLU()
+
+        self.gc_block1 = ContextBlock(inplanes=256, ratio=1./4.)
+        self.gc_block2 = ContextBlock(inplanes=256, ratio=1. / 4.)
+
+        self.scat_conv = ConvModule(
+                out_channels * (self.backbone_end_level-self.start_level),
+                out_channels,
+                3,
+                padding=1,
+                conv_cfg=conv_cfg,
+                norm_cfg=norm_cfg,
+                activation=self.activation,
+                inplace=False)
+
+        self.c3_w = nn.Parameter(torch.ones(3, dtype=torch.float32), requires_grad=True)
+        self.c4_w = nn.Parameter(torch.ones(3, dtype=torch.float32), requires_grad=True)
+        self.c5_w = nn.Parameter(torch.ones(3, dtype=torch.float32), requires_grad=True)
 
         for i in range(self.start_level, self.backbone_end_level):
             l_conv = ConvModule(
@@ -91,6 +111,7 @@ class CatFPN(nn.Module):
             self.cat_convs.append(cat_conv)
             self.lateral_convs.append(l_conv)
             self.add_convs.append(add_conv)
+
             #self.gc_block.append(ContextBlock(inplanes=256, ratio=1./4.))
         # add extra conv layers (e.g., RetinaNet)
         extra_levels = num_outs - self.backbone_end_level + self.start_level
@@ -142,17 +163,43 @@ class CatFPN(nn.Module):
                 level.append(F.max_pool2d(level[-1], 2, stride=2))
             mulscale_per_level.append(level)
         sglscale_per_level = list(zip(*mulscale_per_level))
-
-        feat_add = [sum(scale) for scale in sglscale_per_level]
-        # feat_cat = [torch.cat(scale, 1)for scale in sglscale_per_level]
+        feat_cat = [torch.cat(scale, 1)for scale in sglscale_per_level]
         #channel_se = [self.se(cat_ft) for cat_ft in feat_cat]
-        # outs = [cat_conv(feat_cat[i]) for i, cat_conv in enumerate(self.cat_convs)]
+        mcat = [cat_conv(feat_cat[i]) for i, cat_conv in enumerate(self.cat_convs)]
         #outs = [gc(outs[i]) for i, gc in enumerate(self.gc_block)]
-        # outs = [self.gc_block(ft) for ft in outs]
-        outs = [self.gc_block(ft) for ft in feat_add]
-        outs = [outs[i]+lateral for i, lateral in enumerate(laterals)]
-        outs = [add_conv(outs[i]) for i, add_conv in enumerate(self.add_convs)]
-        #outs = [self.gc_block(ft) for ft in outs]
+        mcat = [self.gc_block1(ft) for ft in mcat]
+
+        single_list = []
+        level = used_backbone_levels // 2
+
+        for i in range(used_backbone_levels):
+            if i < level:
+                single_list.append(F.max_pool2d(laterals[i], 2, stride=2))
+            elif i == level:
+                single_list.append(laterals[i])
+            else:
+                single_list.append(F.interpolate(laterals[i], scale_factor=2, mode='nearest'))
+
+        single_cat = torch.cat(single_list, 1)
+        single_cat = self.scat_conv(single_cat)
+        single_cat = self.gc_block2(single_cat)
+
+        m = level - 0
+        n = used_backbone_levels - 1 - level
+        scat = [single_cat]
+        for x in range(m):
+            scat.insert(0, F.interpolate(scat[0], scale_factor=2, mode='nearest'))
+        for y in range(n):
+            scat.append(F.max_pool2d(scat[-1], 2, stride=2))
+
+        # outs = [scat[i]+lateral for i, lateral in enumerate(laterals)]
+        # outs = [add_conv(outs[i]) for i, add_conv in enumerate(self.add_convs)]
+
+        outs = []
+        for i, (m, s, l) in enumerate(zip(mcat, scat, laterals)):
+             outs.append(
+                 self.add_convs[i](m.sigmoid()*s/2 + l / 2)
+             )
 
         if self.num_outs > used_backbone_levels:
             if not self.add_extra_convs:

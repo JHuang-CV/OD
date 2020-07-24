@@ -7,7 +7,25 @@ from torch.utils.data import Dataset
 from mmdet.core import eval_map, eval_recalls
 from .pipelines import Compose
 from .registry import DATASETS
+import cv2
+import matplotlib.colors as mcolors
+import random
+import os
 
+CLASSES = ('person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
+               'train', 'truck', 'boat', 'traffic_light', 'fire_hydrant',
+               'stop_sign', 'parking_meter', 'bench', 'bird', 'cat', 'dog',
+               'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe',
+               'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
+               'skis', 'snowboard', 'sports_ball', 'kite', 'baseball_bat',
+               'baseball_glove', 'skateboard', 'surfboard', 'tennis_racket',
+               'bottle', 'wine_glass', 'cup', 'fork', 'knife', 'spoon', 'bowl',
+               'banana', 'apple', 'sandwich', 'orange', 'broccoli', 'carrot',
+               'hot_dog', 'pizza', 'donut', 'cake', 'chair', 'couch',
+               'potted_plant', 'bed', 'dining_table', 'toilet', 'tv', 'laptop',
+               'mouse', 'remote', 'keyboard', 'cell_phone', 'microwave',
+               'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock',
+               'vase', 'scissors', 'teddy_bear', 'hair_drier', 'toothbrush')
 
 @DATASETS.register_module
 class CustomDataset(Dataset):
@@ -147,6 +165,35 @@ class CustomDataset(Dataset):
     def prepare_test_img(self, idx):
         img_info = self.img_infos[idx]
         results = dict(img_info=img_info)
+
+        # ann_info = self.get_ann_info(idx)
+        # filename = img_info['filename']
+        # img = cv2.imread(f'./data/coco/val2017/{filename}')
+        # bboxes = ann_info['bboxes']
+        # labels = ann_info['labels']
+        # l_c_map = {}
+        #
+        # for i in range(len(labels)):
+        #
+        #     x1 = int(bboxes[i, 0])
+        #     y1 = int(bboxes[i, 1])
+        #     x2 = int(bboxes[i, 2])
+        #     y2 = int(bboxes[i, 3])
+        #     if l_c_map.get(labels[i]):
+        #         color = l_c_map[labels[i]]
+        #     else:
+        #
+        #         l_c_map[labels[i]] = tuple([random.randint(0,255) for i in range(3)])
+        #         color = l_c_map[labels[i]]
+        #
+        #     img = cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
+        #     img = cv2.putText(img, CLASSES[labels[i]-1], (x1, y1-6),
+        #                              cv2.FONT_HERSHEY_COMPLEX, 0.5, color, 2)
+        # picture = filename.split('.')[0]
+        # if not os.path.exists(f'./feature_maps/{picture}'):
+        #     os.makedirs(f'./feature_maps/{picture}')
+        # cv2.imwrite(f'./feature_maps/{picture}/{filename}', img)
+
         if self.proposals is not None:
             results['proposals'] = self.proposals[idx]
         self.pre_pipeline(results)
