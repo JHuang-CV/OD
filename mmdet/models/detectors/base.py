@@ -8,6 +8,25 @@ import torch.nn as nn
 from mmdet.core import auto_fp16, get_classes, tensor2imgs
 from mmdet.utils import print_log
 
+import cv2
+import random
+import glob
+
+CLASSES = ('person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
+               'train', 'truck', 'boat', 'traffic_light', 'fire_hydrant',
+               'stop_sign', 'parking_meter', 'bench', 'bird', 'cat', 'dog',
+               'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe',
+               'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
+               'skis', 'snowboard', 'sports_ball', 'kite', 'baseball_bat',
+               'baseball_glove', 'skateboard', 'surfboard', 'tennis_racket',
+               'bottle', 'wine_glass', 'cup', 'fork', 'knife', 'spoon', 'bowl',
+               'banana', 'apple', 'sandwich', 'orange', 'broccoli', 'carrot',
+               'hot_dog', 'pizza', 'donut', 'cake', 'chair', 'couch',
+               'potted_plant', 'bed', 'dining_table', 'toilet', 'tv', 'laptop',
+               'mouse', 'remote', 'keyboard', 'cell_phone', 'microwave',
+               'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock',
+               'vase', 'scissors', 'teddy_bear', 'hair_drier', 'toothbrush')
+
 
 class BaseDetector(nn.Module, metaclass=ABCMeta):
     """Base class for detectors"""
@@ -138,7 +157,7 @@ class BaseDetector(nn.Module, metaclass=ABCMeta):
         else:
             return self.forward_test(img, img_meta, **kwargs)
 
-    def show_result(self, data, result, dataset=None, score_thr=0.3):
+    def show_result(self, data, result, dataset=None, score_thr=0.4):
         if isinstance(result, tuple):
             bbox_result, segm_result = result
         else:
@@ -180,9 +199,29 @@ class BaseDetector(nn.Module, metaclass=ABCMeta):
                 for i, bbox in enumerate(bbox_result)
             ]
             labels = np.concatenate(labels)
-            mmcv.imshow_det_bboxes(
-                img_show,
-                bboxes,
-                labels,
-                class_names=class_names,
-                score_thr=score_thr)
+
+            scores = bboxes[:, -1]
+            inds = scores > score_thr
+            bboxes = bboxes[inds, :]
+            labels = labels[inds]
+
+            for bbox, label in zip(bboxes, labels):
+
+                x1 = int(bbox[0])
+                y1 = int(bbox[1])
+                x2 = int(bbox[2])
+                y2 = int(bbox[3])
+
+                img = cv2.rectangle(img, (x1, y1), (x2, y2), mmcv.color_val('green'), thickness=2)
+                img = cv2.putText(img, CLASSES[label], (x1, y1-6), cv2.FONT_HERSHEY_COMPLEX, 0.5,
+                                  mmcv.color_val('green'))
+            n = len(glob.glob('./detected2_images/*.jpg'))
+            cv2.imwrite(f'./detected2_images/{n}.jpg', img)
+
+
+            # mmcv.imshow_det_bboxes(
+            #     img_show,
+            #     bboxes,
+            #     labels,
+            #     class_names=class_names,
+            #     score_thr=score_thr)
